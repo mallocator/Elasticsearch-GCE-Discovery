@@ -1,5 +1,6 @@
 package org.elasticsearch.cloud.gce;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
@@ -13,8 +14,9 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.auth.oauth2.MemoryCredentialStore;
+import com.google.api.client.auth.oauth2.CredentialStore;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
+import com.google.api.client.extensions.java6.auth.oauth2.FileCredentialStore;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
@@ -34,6 +36,7 @@ public class GCEService extends AbstractLifecycleComponent<GCEService> {
 	private Compute				client;
 	private final String		clientId;
 	private final String		clientSecret;
+	private final String		credentials;
 
 	@Inject
 	public GCEService(final Settings settings, final SettingsFilter settingsFilter, final NetworkService networkService,
@@ -44,6 +47,8 @@ public class GCEService extends AbstractLifecycleComponent<GCEService> {
 		discoveryNodeService.addCustomAttributeProvider(new GCENodeAttributes(settings));
 		this.clientId = this.settings.get("discovery.gce.client_id");
 		this.clientSecret = this.settings.get("discovery.gce.client_secret");
+		this.credentials = this.settings.get("discovery.gce.credential_location", System.getProperty("user.home")
+				+ ".credentials/compute-engine.json");
 		this.logger.debug("Initialized GCEService with client_id {} and client_secret {}", this.clientId, this.clientSecret.length());
 	}
 
@@ -64,16 +69,16 @@ public class GCEService extends AbstractLifecycleComponent<GCEService> {
 			final JsonFactory jsonFactory = new JacksonFactory();
 			final Details details = new Details().setClientId(this.clientId).setClientSecret(this.clientSecret);
 			final GoogleClientSecrets secrets = new GoogleClientSecrets().setInstalled(details);
+			final CredentialStore credentialsStore = new FileCredentialStore(new File(this.credentials), jsonFactory);
 			final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport,
 				jsonFactory,
 				secrets,
-				Arrays.asList(ComputeScopes.COMPUTE_READONLY)).setCredentialStore(new MemoryCredentialStore()).build();
+				Arrays.asList(ComputeScopes.COMPUTE_READONLY)).setCredentialStore(credentialsStore).build();
 			final Credential credential = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("compute.readonly");
 			this.client = new Compute.Builder(httpTransport, jsonFactory, credential).setApplicationName(APP_NAME).build();
 		} catch (GeneralSecurityException | IOException e) {
 			this.logger.error("There was an error creating the GCE compute client", e);
 		}
-
 		return this.client;
 
 	}

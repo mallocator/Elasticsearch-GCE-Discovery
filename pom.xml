@@ -21,9 +21,9 @@
 		<java.version>1.7</java.version>
 
 		<elasticsearch.version>0.90.0.Beta1</elasticsearch.version>
-		<version.google.gce-api>v1beta14-rev20-1.15.0-rc</version.google.gce-api>
-		<version.google.jackson>1.14.1-beta</version.google.jackson>
-		<version.google.oauth>1.14.1-beta</version.google.oauth>
+		<version.google.gce-api>v1beta15-rev1-1.15.0-rc</version.google.gce-api>
+		<version.google.jackson>1.15.0-rc</version.google.jackson>
+		<version.google.oauth>1.15.0-rc</version.google.oauth>
 
 		<version.testng>6.8.1</version.testng>
 		<version.jmockit>1.1</version.jmockit>
