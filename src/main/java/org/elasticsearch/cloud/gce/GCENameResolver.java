@@ -25,6 +25,7 @@ public class GCENameResolver extends AbstractComponent implements CustomNameReso
 
 	public GCENameResolver(final Settings settings) {
 		super(settings);
+		this.logger.debug("Initialized GCENameResolver");
 	}
 
 	@Override

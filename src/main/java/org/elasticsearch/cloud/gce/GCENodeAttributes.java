@@ -22,11 +22,13 @@ public class GCENodeAttributes extends AbstractComponent implements DiscoveryNod
 
 	public GCENodeAttributes(final Settings settings) {
 		super(settings);
+		this.logger.debug("Initialized GCENodeAttributes");
 	}
 
 	@Override
 	public Map<String, String> buildAttributes() {
-		if (!this.settings.getAsBoolean("cloud.node.auto_attributes", false)) {
+		this.logger.debug("Building node atrtibutes");
+		if (!this.settings.getAsBoolean("cloud.node.auto_attributes", true)) {
 			return null;
 		}
 		Map<String, String> gceAttributes = Maps.newHashMap();
@@ -46,7 +48,7 @@ public class GCENodeAttributes extends AbstractComponent implements DiscoveryNod
 				this.logger.error("No GCE meta data returned from {}", url);
 				return null;
 			}
-			gceAttributes.put("gce_availability_zone", metadataResult);
+			gceAttributes.put("gce_zone", metadataResult);
 		} catch (IOException e) {
 			this.logger.debug("Failed to get metadata: " + ExceptionsHelper.detailedMessage(e));
 		} finally {

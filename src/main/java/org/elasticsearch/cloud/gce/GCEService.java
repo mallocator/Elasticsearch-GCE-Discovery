@@ -42,8 +42,9 @@ public class GCEService extends AbstractLifecycleComponent<GCEService> {
 		settingsFilter.addFilter(new GCESettingsFilter());
 		networkService.addCustomNameResolver(new GCENameResolver(settings));
 		discoveryNodeService.addCustomAttributeProvider(new GCENodeAttributes(settings));
-		this.clientId = this.componentSettings.get("client_id");
-		this.clientSecret = this.componentSettings.get("client_secret");
+		this.clientId = this.settings.get("discovery.gce.client_id");
+		this.clientSecret = this.settings.get("discovery.gce.client_secret");
+		this.logger.debug("Initialized GCEService with client_id {} and client_secret {}", this.clientId, this.clientSecret.length());
 	}
 
 	/**
@@ -52,18 +53,22 @@ public class GCEService extends AbstractLifecycleComponent<GCEService> {
 	 * @return
 	 */
 	public synchronized Compute client() {
+		this.logger.trace("Retrieving GCE Client");
 		if (this.client != null) {
 			return this.client;
 		}
 
+		this.logger.debug("Setting up GCE Client");
 		try {
 			final HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
 			final JsonFactory jsonFactory = new JacksonFactory();
+			final Details details = new Details().setClientId(this.clientId).setClientSecret(this.clientSecret);
+			final GoogleClientSecrets secrets = new GoogleClientSecrets().setInstalled(details);
 			final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport,
 				jsonFactory,
-				new GoogleClientSecrets().setInstalled(new Details().setClientId(this.clientId).setClientSecret(this.clientSecret)),
+				secrets,
 				Arrays.asList(ComputeScopes.COMPUTE_READONLY)).setCredentialStore(new MemoryCredentialStore()).build();
-			final Credential credential = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
+			final Credential credential = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("compute.readonly");
 			this.client = new Compute.Builder(httpTransport, jsonFactory, credential).setApplicationName(APP_NAME).build();
 		} catch (GeneralSecurityException | IOException e) {
 			this.logger.error("There was an error creating the GCE compute client", e);

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.elasticsearch.cloud.gce.GCEService;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.component.AbstractComponent;
@@ -18,6 +19,7 @@ import org.elasticsearch.transport.TransportService;
 
 import com.google.api.services.compute.Compute;
 import com.google.api.services.compute.model.Instance;
+import com.google.api.services.compute.model.Metadata;
 import com.google.api.services.compute.model.NetworkInterface;
 import com.google.api.services.compute.model.Zone;
 
@@ -26,7 +28,7 @@ import com.google.api.services.compute.model.Zone;
  */
 public class GCEUnicastHostsProvider extends AbstractComponent implements UnicastHostsProvider {
 	private final TransportService		transportService;
-	private final Compute				client;
+	private final GCEService			gceService;
 	private final String				project;
 	private final Set<String>			network;
 	private final Set<String>			tags;
@@ -34,15 +36,16 @@ public class GCEUnicastHostsProvider extends AbstractComponent implements Unicas
 	private final Set<String>			zones;
 
 	@Inject
-	public GCEUnicastHostsProvider(final Settings settings, final TransportService transportService, final Compute client) {
+	public GCEUnicastHostsProvider(final Settings settings, final TransportService transportService, final GCEService gceService) {
 		super(settings);
 		this.transportService = transportService;
-		this.client = client;
-		this.project = this.componentSettings.get("project");
-		this.network = new HashSet<>(Arrays.asList(this.componentSettings.getAsArray("network")));
-		this.tags = new HashSet<>(Arrays.asList(this.componentSettings.getAsArray("tags")));
-		this.metadata = this.componentSettings.getByPrefix("metadata.").getAsMap();
-		this.zones = new HashSet<>(Arrays.asList(this.componentSettings.getAsArray("zones")));
+		this.gceService = gceService;
+		this.project = this.settings.get("discovery.gce.project");
+		this.network = new HashSet<>(Arrays.asList(this.settings.getAsArray("discovery.gce.network")));
+		this.tags = new HashSet<>(Arrays.asList(this.settings.getAsArray("discovery.gce.tags")));
+		this.metadata = this.settings.getByPrefix("discovery.gce.metadata.").getAsMap();
+		this.zones = new HashSet<>(Arrays.asList(this.settings.getAsArray("discovery.gce.zones")));
+		this.logger.debug("Initialized GCEUnicastHostProvider");
 	}
 
 	/**
@@ -53,29 +56,33 @@ public class GCEUnicastHostsProvider extends AbstractComponent implements Unicas
 	public List<DiscoveryNode> buildDynamicNodes() {
 		final List<DiscoveryNode> nodes = Lists.newArrayList();
 
-		this.logger.trace("Building dynamic list of discovery nodes");
+		this.logger.debug("Building dynamic list of discovery nodes");
+		final Compute client = this.gceService.client();
 		try {
-			for (final Zone zone : this.client.zones().list(this.project).execute().getItems()) {
+			for (final Zone zone : client.zones().list(this.project).execute().getItems()) {
 				if (!checkZone(zone)) {
 					continue;
 				}
-				for (final Instance instance : this.client.instances().list(this.project, zone.getName()).execute().getItems()) {
-					if (!checkState(instance) || !checkTags(instance) || !checkMetaData(instance)) {
-						continue;
-					}
-					for (final NetworkInterface networkInterface : instance.getNetworkInterfaces()) {
-						if (this.network.isEmpty() || this.network.contains(networkInterface.getNetwork())) {
-							int i = 0;
-							for (TransportAddress address : this.transportService.addressesFromString(networkInterface.getNetworkIP())) {
-								nodes.add(new DiscoveryNode("#cloud-" + instance.getId() + "-" + networkInterface.getName() + "-" + i++,
-									address));
+				final List<Instance> iList = client.instances().list(this.project, zone.getName()).execute().getItems();
+				if (iList != null) {
+					for (final Instance instance : iList) {
+						if (!checkState(instance) || !checkTags(instance) || !checkMetaData(instance)) {
+							continue;
+						}
+						for (final NetworkInterface networkInterface : instance.getNetworkInterfaces()) {
+							if (this.network.isEmpty() || this.network.contains(networkInterface.getNetwork())) {
+								int i = 0;
+								for (TransportAddress address : this.transportService.addressesFromString(networkInterface.getNetworkIP())) {
+									nodes.add(new DiscoveryNode("#cloud-" + instance.getId() + "-" + networkInterface.getName() + "-" + i++,
+										address));
+								}
 							}
 						}
 					}
 				}
 			}
 		} catch (Exception e) {
-			this.logger.error("Unable to load google computer client", e);
+			this.logger.error("Unable to load google computer gceService", e);
 		}
 
 		this.logger.debug("Using dynamic discovery nodes {}", nodes);
@@ -121,9 +128,12 @@ public class GCEUnicastHostsProvider extends AbstractComponent implements Unicas
 		if (this.tags.isEmpty()) {
 			return true;
 		}
-		for (String tag : instance.getTags().getItems()) {
-			if (this.tags.contains(tag)) {
-				return true;
+		final List<String> tags = instance.getTags().getItems();
+		if (tags != null) {
+			for (final String tag : tags) {
+				if (this.tags.contains(tag)) {
+					return true;
+				}
 			}
 		}
 		return false;
@@ -139,9 +149,12 @@ public class GCEUnicastHostsProvider extends AbstractComponent implements Unicas
 		if (this.metadata.isEmpty()) {
 			return true;
 		}
-		for (final Entry<String, Object> entry : instance.getMetadata().entrySet()) {
-			if (this.metadata.containsKey(entry.getKey()) && this.metadata.get(entry.getKey()).matches((String) entry.getValue())) {
-				return true;
+		final Metadata metadata = instance.getMetadata();
+		if (metadata != null) {
+			for (final Entry<String, Object> entry : metadata.entrySet()) {
+				if (this.metadata.containsKey(entry.getKey()) && this.metadata.get(entry.getKey()).matches((String) entry.getValue())) {
+					return true;
+				}
 			}
 		}
 		return false;

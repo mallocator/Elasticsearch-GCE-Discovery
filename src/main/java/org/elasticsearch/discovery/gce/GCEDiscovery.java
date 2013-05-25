@@ -25,7 +25,9 @@ public class GCEDiscovery extends ZenDiscovery {
 			final TransportService transportService, final ClusterService clusterService, final NodeSettingsService nodeSettingsService,
 			final ZenPingService pingService, final DiscoveryNodeService discoveryNodeService, final GCEService gceService) {
 		super(settings, clusterName, threadPool, transportService, clusterService, nodeSettingsService, discoveryNodeService, pingService);
-		if (settings.getAsBoolean("cloud.enabled", true)) {
+
+		this.logger.info("Setting up GCE Discovery");
+		if (settings.getAsBoolean("discovery.gce.enabled", true)) {
 			ImmutableList<? extends ZenPing> zenPings = pingService.zenPings();
 			UnicastZenPing unicastZenPing = null;
 			for (ZenPing zenPing : zenPings) {
@@ -36,8 +38,10 @@ public class GCEDiscovery extends ZenDiscovery {
 			}
 
 			if (unicastZenPing != null) {
-				unicastZenPing.addHostsProvider(new GCEUnicastHostsProvider(settings, transportService, gceService.client()));
+				this.logger.debug("Adding GCE UnicastHostsProvider to zen pings");
+				unicastZenPing.addHostsProvider(new GCEUnicastHostsProvider(settings, transportService, gceService));
 				pingService.zenPings(ImmutableList.of(unicastZenPing));
+				this.logger.info("Added GCE UnicastHostsProvider to zen pings");
 			}
 			else {
 				this.logger.warn("Failed GCE unicast discovery, no unicast ping found");
