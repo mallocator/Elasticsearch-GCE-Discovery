@@ -1,4 +1,4 @@
-package org.elasticsearch.cloud.gce;
+package org.elasticsearch.discovery.gce;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -52,7 +52,11 @@ public class GCENodeAttributes extends AbstractComponent implements DiscoveryNod
 		} catch (IOException e) {
 			this.logger.debug("Failed to get metadata: " + ExceptionsHelper.detailedMessage(e));
 		} finally {
-			Closeables.closeQuietly(in);
+			try {
+				Closeables.close(in, true);
+			} catch (IOException e) {
+				this.logger.warn("Unable to close stream", e);
+			}
 		}
 
 		return gceAttributes;

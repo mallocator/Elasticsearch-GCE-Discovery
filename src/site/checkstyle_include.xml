@@ -146,6 +146,11 @@
 		</module>
 	</module>
 	<module name="SuppressionCommentFilter" />
+	<module name="SuppressWithNearbyCommentFilter">
+		<property name="commentFormat" value="CHECKSTYLE IGNORE (\w+) FOR NEXT (\d+) LINES" />
+		<property name="checkFormat" value="$1" />
+		<property name="influenceFormat" value="$2" />
+	</module>
 	<module name="FileLength">
 		<property name="severity" value="info" />
 		<property name="max" value="1000" />

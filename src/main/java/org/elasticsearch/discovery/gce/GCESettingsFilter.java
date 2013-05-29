@@ -1,4 +1,4 @@
-package org.elasticsearch.cloud.gce;
+package org.elasticsearch.discovery.gce;
 
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;

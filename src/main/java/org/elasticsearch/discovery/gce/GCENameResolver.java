@@ -1,4 +1,4 @@
-package org.elasticsearch.cloud.gce;
+package org.elasticsearch.discovery.gce;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -22,9 +22,11 @@ import org.elasticsearch.common.settings.Settings;
  * @author mallocator
  */
 public class GCENameResolver extends AbstractComponent implements CustomNameResolver {
+	private final String	networkInterface;
 
 	public GCENameResolver(final Settings settings) {
 		super(settings);
+		this.networkInterface = settings.get("discovery.get.network_if", "0");
 		this.logger.debug("Initialized GCENameResolver");
 	}
 
@@ -36,17 +38,14 @@ public class GCENameResolver extends AbstractComponent implements CustomNameReso
 	@Override
 	public InetAddress resolveIfPossible(final String value) {
 		this.logger.debug("Using GCE Custom Name Resolver to resolve {}", value);
-		URLConnection urlConnection = null;
 		InputStream in = null;
 		try {
-			final URL url = new URL("http://metadata/computeMetadata/v1beta1/instance/network-interfaces/0/ip");
-			this.logger.debug("Looking up (internal) ip from GCE meta data url {}", url);
-			urlConnection = url.openConnection();
+			final URL url = new URL("http://metadata/computeMetadata/v1beta1/instance/network-interfaces/" + this.networkInterface + "/ip");
+			final URLConnection urlConnection = url.openConnection();
 			urlConnection.setConnectTimeout(2000);
 			in = urlConnection.getInputStream();
-			BufferedReader urlReader = new BufferedReader(new InputStreamReader(in));
-
-			String metadataResult = urlReader.readLine();
+			final BufferedReader urlReader = new BufferedReader(new InputStreamReader(in));
+			final String metadataResult = urlReader.readLine();
 			if (metadataResult == null || metadataResult.length() == 0) {
 				this.logger.error("No GCE metadata found at {}", url);
 				return null;
@@ -56,7 +55,11 @@ public class GCENameResolver extends AbstractComponent implements CustomNameReso
 			this.logger.debug("There was an error retrieving meta data from GCE: " + ExceptionsHelper.detailedMessage(e));
 			return null;
 		} finally {
-			Closeables.closeQuietly(in);
+			try {
+				Closeables.close(in, true);
+			} catch (IOException e) {
+				this.logger.warn("Unable to close stream", e);
+			}
 		}
 	}
 }
