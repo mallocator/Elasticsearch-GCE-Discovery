@@ -20,15 +20,15 @@ There are two ways to authenticate against Googles services to allow a node to l
 
 1. Using a client app authentication.	
 
-For this you will need to set set the client_id and client_secret you got from the Google API console. When you launch an Elasticsearch node for the first time, it will output an address that you need to open to authenticate the client with your account. To find the link run Elasticsearch in foreground mode:
+    For this you will need to set set the client_id and client_secret you got from the Google API console. When you launch an Elasticsearch node for the first time, it will output an address that you need to open to authenticate the client with your account. To find the link run Elasticsearch in foreground mode:
 
 	/my/elasticsearch/bin/elasticsearch -f
 	
 2. Using a service account
 
-For this you will need to fetch the p12 file and the client_email from the Google API console. Set the client_id to use the client_email and set the location of the p12 file. The file itself can be compiled into the plugin itself and accessed via classpath:... or the file can come from an external source. This method does not need any further interaction when starting up new Elasticsearch nodes.
+    For this you will need to fetch the p12 file and the client_email from the Google API console. Set the client_id to use the client_email and set the location of the p12 file. The file itself can be compiled into the plugin itself and accessed via classpath:... or the file can come from an external source. This method does not need any further interaction when starting up new Elasticsearch nodes.
 
-Whenever the p12 file cannot be found, the plugin will fall back to using the client app authentication.
+    Whenever the p12 file cannot be found, the plugin will fall back to using the client app authentication.
 
 # Configuration
 
