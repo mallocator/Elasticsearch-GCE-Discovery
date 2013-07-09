@@ -22,7 +22,7 @@ There are two ways to authenticate against Googles services to allow a node to l
 
     For this you will need to set set the client_id and client_secret you got from the Google API console. When you launch an Elasticsearch node for the first time, it will output an address that you need to open to authenticate the client with your account. To find the link run Elasticsearch in foreground mode:
 
-	/my/elasticsearch/bin/elasticsearch -f
+        /my/elasticsearch/bin/elasticsearch -f
 	
 2. Using a service account
 
