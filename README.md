@@ -34,6 +34,10 @@ There are two ways to authenticate against Googles services to allow a node to l
 
 # Configuration
 
+You can configure which instances will be queried to look for an ElasticSearch cluster. Most configuration options below should be self explanatory.
+The only gce properties for running that are required are the client_id, the client_secret or the client_p12_location and the project.
+tags, metadata, zones and networks all are only there to limit where the client will look for a cluster to join.
+
 	discovery:
 	  type: GCE
 	  gce:
@@ -51,3 +55,11 @@ There are two ways to authenticate against Googles services to allow a node to l
 	    network: [or, networks]
 	    network_if: defaults to 0
 	cloud.node.auto_attributes: <defaults to true>
+	
+In case you are running your ElasticSearch cluster on GCE with a load balancer and have a virtual network interface (eth0:0) you might run into trouble when trying to create a cluster.
+Nodes sometimes pick up the shared IP, so that all nodes will have the same IP. This will prevent the cluster from building up, as nodes after the first one will think they are joining with themselves.
+To prevent this you should define the network interface that ElasticSearch should use in elasticsearch.yml:
+
+	network.publish_host: _eth0_
+	
+#
