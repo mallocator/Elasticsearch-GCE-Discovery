@@ -1,6 +1,7 @@
 package org.elasticsearch.discovery.gce;
 
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.Version;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.node.DiscoveryNodeService;
@@ -23,6 +24,7 @@ import org.elasticsearch.transport.TransportService;
 public class GCEDiscovery extends ZenDiscovery {
 	private final ZenPingService	pingService;
 	private final TransportService	transportService;
+	int								i	= 1;
 
 	@Inject
 	// CHECKSTYLE IGNORE ParameterNumber FOR NEXT 1 LINES
@@ -30,7 +32,15 @@ public class GCEDiscovery extends ZenDiscovery {
 			final TransportService transportService, final ClusterService clusterService, final NodeSettingsService nodeSettingsService,
 			final ZenPingService pingService, final DiscoveryNodeService discoveryNodeService, final SettingsFilter settingsFilter,
 			final NetworkService networkService) {
-		super(settings, clusterName, threadPool, transportService, clusterService, nodeSettingsService, discoveryNodeService, pingService);
+		super(settings,
+			clusterName,
+			threadPool,
+			transportService,
+			clusterService,
+			nodeSettingsService,
+			discoveryNodeService,
+			pingService,
+			Version.CURRENT);
 
 		this.pingService = pingService;
 		this.transportService = transportService;
@@ -41,7 +51,7 @@ public class GCEDiscovery extends ZenDiscovery {
 	}
 
 	@Override
-	protected void doStart() throws ElasticSearchException {
+	protected void doStart() throws ElasticsearchException {
 		this.logger.info("Setting up GCE Discovery");
 		if (this.settings.getAsBoolean("discovery.gce.enabled", true)) {
 			ImmutableList<? extends ZenPing> zenPings = this.pingService.zenPings();

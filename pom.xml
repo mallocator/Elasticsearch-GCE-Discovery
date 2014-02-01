@@ -20,18 +20,17 @@
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<java.version>1.7</java.version>
 
-		<elasticsearch.version>0.90.0</elasticsearch.version>
-		<version.google.gce-api>v1beta15-rev1-1.15.0-rc</version.google.gce-api>
-		<version.google.jackson>1.15.0-rc</version.google.jackson>
-		<version.google.oauth>1.15.0-rc</version.google.oauth>
+		<elasticsearch.version>1.0.0.RC1</elasticsearch.version>
+		<version.google.gce>v1beta16-rev1</version.google.gce>
+		<version.google.api>1.17.0-rc</version.google.api>
 
 		<version.testng>6.8.1</version.testng>
-		<version.jmockit>1.1</version.jmockit>
+		<version.jmockit>1.5</version.jmockit>
 
 		<version.maven.compiler>3.1</version.maven.compiler>
 		<version.maven.surefire>2.14.1</version.maven.surefire>
-		<version.findbugs>2.5.2</version.findbugs>
-		<version.checkstyle>2.10</version.checkstyle>
+		<version.findbugs>2.5.3</version.findbugs>
+		<version.checkstyle>2.11</version.checkstyle>
 	</properties>
 
 	<dependencies>
@@ -44,17 +43,17 @@
 		<dependency>
 			<groupId>com.google.apis</groupId>
 			<artifactId>google-api-services-compute</artifactId>
-			<version>${version.google.gce-api}</version>
+			<version>${version.google.gce}-${version.google.api}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.http-client</groupId>
 			<artifactId>google-http-client-jackson2</artifactId>
-			<version>${version.google.jackson}</version>
+			<version>${version.google.api}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.oauth-client</groupId>
 			<artifactId>google-oauth-client-jetty</artifactId>
-			<version>${version.google.oauth}</version>
+			<version>${version.google.api}</version>
 		</dependency>
 
 		<!-- Required for mocking during tests -->

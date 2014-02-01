@@ -8,9 +8,10 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLConnection;
 
+import org.apache.lucene.util.IOUtils;
 import org.elasticsearch.ExceptionsHelper;
-import org.elasticsearch.common.component.AbstractComponent;
-import org.elasticsearch.common.io.Closeables;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService.CustomNameResolver;
 import org.elasticsearch.common.settings.Settings;
 
@@ -21,11 +22,11 @@ import org.elasticsearch.common.settings.Settings;
  * 
  * @author mallocator
  */
-public class GCENameResolver extends AbstractComponent implements CustomNameResolver {
+public class GCENameResolver implements CustomNameResolver {
+	private final ESLogger	logger	= Loggers.getLogger(getClass());
 	private final String	networkInterface;
 
 	public GCENameResolver(final Settings settings) {
-		super(settings);
 		this.networkInterface = settings.get("discovery.get.network_if", "0");
 		this.logger.debug("Initialized GCENameResolver");
 	}
@@ -55,11 +56,7 @@ public class GCENameResolver extends AbstractComponent implements CustomNameReso
 			this.logger.debug("There was an error retrieving meta data from GCE: " + ExceptionsHelper.detailedMessage(e));
 			return null;
 		} finally {
-			try {
-				Closeables.close(in, true);
-			} catch (IOException e) {
-				this.logger.warn("Unable to close stream", e);
-			}
+			IOUtils.closeWhileHandlingException(in);
 		}
 	}
 }

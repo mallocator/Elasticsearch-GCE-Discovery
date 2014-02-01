@@ -8,20 +8,23 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Map;
 
+import org.apache.lucene.util.IOUtils;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.cluster.node.DiscoveryNodeService;
 import org.elasticsearch.common.collect.Maps;
-import org.elasticsearch.common.component.AbstractComponent;
-import org.elasticsearch.common.io.Closeables;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 
 /**
  * Looks up the availability zone from gce and sets it as a custom node attribute.
  */
-public class GCENodeAttributes extends AbstractComponent implements DiscoveryNodeService.CustomAttributesProvider {
+public class GCENodeAttributes implements DiscoveryNodeService.CustomAttributesProvider {
+	private final ESLogger	logger	= Loggers.getLogger(getClass());
+	private final Settings	settings;
 
 	public GCENodeAttributes(final Settings settings) {
-		super(settings);
+		this.settings = settings;
 		this.logger.debug("Initialized GCENodeAttributes");
 	}
 
@@ -52,11 +55,7 @@ public class GCENodeAttributes extends AbstractComponent implements DiscoveryNod
 		} catch (IOException e) {
 			this.logger.debug("Failed to get metadata: " + ExceptionsHelper.detailedMessage(e));
 		} finally {
-			try {
-				Closeables.close(in, true);
-			} catch (IOException e) {
-				this.logger.warn("Unable to close stream", e);
-			}
+			IOUtils.closeWhileHandlingException(in);
 		}
 
 		return gceAttributes;

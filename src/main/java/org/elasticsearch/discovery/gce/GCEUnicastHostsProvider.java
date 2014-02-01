@@ -12,19 +12,19 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.elasticsearch.Version;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.collect.Lists;
-import org.elasticsearch.common.component.AbstractComponent;
-import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.discovery.zen.ping.unicast.UnicastHostsProvider;
 import org.elasticsearch.transport.TransportService;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.auth.oauth2.CredentialStore;
+import com.google.api.client.auth.oauth2.StoredCredential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.java6.auth.oauth2.FileCredentialStore;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
@@ -35,6 +35,8 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.SecurityUtils;
+import com.google.api.client.util.store.DataStore;
+import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.compute.Compute;
 import com.google.api.services.compute.ComputeScopes;
 import com.google.api.services.compute.model.Instance;
@@ -45,12 +47,13 @@ import com.google.api.services.compute.model.Zone;
 /**
  * Is used to register this node and create a list of available nodes in the cluster.
  */
-public class GCEUnicastHostsProvider extends AbstractComponent implements UnicastHostsProvider {
+public class GCEUnicastHostsProvider implements UnicastHostsProvider {
 	private static final String			APP_NAME	= "ElasticSearch GCE Discovery Plugin";
+	private final ESLogger				logger		= Loggers.getLogger(getClass());
 	private final TransportService		transportService;
 	private final String				clientId;
 	private final String				clientSecret;
-	private final String				credentials;
+	private final File					credentials;
 	private final String				clientP12;
 	private final String				project;
 	private final Set<String>			network;
@@ -59,20 +62,18 @@ public class GCEUnicastHostsProvider extends AbstractComponent implements Unicas
 	private final Set<String>			zones;
 	private final Compute				client;
 
-	@Inject
 	public GCEUnicastHostsProvider(final Settings settings, final TransportService transportService) {
-		super(settings);
 		this.transportService = transportService;
-		this.project = this.settings.get("discovery.gce.project");
-		this.network = new HashSet<>(Arrays.asList(this.settings.getAsArray("discovery.gce.network")));
-		this.tags = new HashSet<>(Arrays.asList(this.settings.getAsArray("discovery.gce.tags")));
-		this.metadata = this.settings.getByPrefix("discovery.gce.metadata.").getAsMap();
-		this.zones = new HashSet<>(Arrays.asList(this.settings.getAsArray("discovery.gce.zones")));
-		this.clientId = this.settings.get("discovery.gce.client_id");
-		this.clientSecret = this.settings.get("discovery.gce.client_secret");
-		this.clientP12 = this.settings.get("discovery.gce.client_p12_location");
-		this.credentials = this.settings.get("discovery.gce.credential_location", System.getProperty("user.home")
-				+ ".credentials/compute-engine.json");
+		this.project = settings.get("discovery.gce.project");
+		this.network = new HashSet<>(Arrays.asList(settings.getAsArray("discovery.gce.network")));
+		this.tags = new HashSet<>(Arrays.asList(settings.getAsArray("discovery.gce.tags")));
+		this.metadata = settings.getByPrefix("discovery.gce.metadata.").getAsMap();
+		this.zones = new HashSet<>(Arrays.asList(settings.getAsArray("discovery.gce.zones")));
+		this.clientId = settings.get("discovery.gce.client_id");
+		this.clientSecret = settings.get("discovery.gce.client_secret");
+		this.clientP12 = settings.get("discovery.gce.client_p12_location");
+		this.credentials = new File(settings.get("discovery.gce.credential_location", System.getProperty("user.home")
+				+ ".credentials/compute-engine.json"));
 		this.client = getClient();
 		this.logger.debug("Initialized GCEUnicastHostProvider");
 	}
@@ -95,11 +96,11 @@ public class GCEUnicastHostsProvider extends AbstractComponent implements Unicas
 			else {
 				final Details details = new Details().setClientId(this.clientId).setClientSecret(this.clientSecret);
 				final GoogleClientSecrets secrets = new GoogleClientSecrets().setInstalled(details);
-				final CredentialStore credentialsStore = new FileCredentialStore(new File(this.credentials), jsonFactory);
+				final DataStore<StoredCredential> credentialsStore = new FileDataStoreFactory(this.credentials.getParentFile()).getDataStore(this.credentials.getName());
 				final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport,
 					jsonFactory,
 					secrets,
-					Arrays.asList(ComputeScopes.COMPUTE_READONLY)).setCredentialStore(credentialsStore).build();
+					Arrays.asList(ComputeScopes.COMPUTE_READONLY)).setCredentialDataStore(credentialsStore).build();
 				credential = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize(this.clientId);
 			}
 			return new Compute.Builder(httpTransport, jsonFactory, credential).setApplicationName(APP_NAME).build();
@@ -153,7 +154,8 @@ public class GCEUnicastHostsProvider extends AbstractComponent implements Unicas
 								int i = 0;
 								for (TransportAddress address : this.transportService.addressesFromString(networkInterface.getNetworkIP())) {
 									nodes.add(new DiscoveryNode("#cloud-" + instance.getId() + "-" + networkInterface.getName() + "-" + i++,
-										address));
+										address,
+										Version.CURRENT));
 								}
 							}
 						}
