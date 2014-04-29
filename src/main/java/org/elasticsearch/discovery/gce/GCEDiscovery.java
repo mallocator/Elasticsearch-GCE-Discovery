@@ -9,7 +9,7 @@ import org.elasticsearch.common.collect.ImmutableList;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.settings.SettingsFilter;
+import org.elasticsearch.discovery.DiscoverySettings;
 import org.elasticsearch.discovery.zen.ZenDiscovery;
 import org.elasticsearch.discovery.zen.ping.ZenPing;
 import org.elasticsearch.discovery.zen.ping.ZenPingService;
@@ -30,8 +30,8 @@ public class GCEDiscovery extends ZenDiscovery {
 	// CHECKSTYLE IGNORE ParameterNumber FOR NEXT 1 LINES
 	public GCEDiscovery(final Settings settings, final ClusterName clusterName, final ThreadPool threadPool,
 			final TransportService transportService, final ClusterService clusterService, final NodeSettingsService nodeSettingsService,
-			final ZenPingService pingService, final DiscoveryNodeService discoveryNodeService, final SettingsFilter settingsFilter,
-			final NetworkService networkService) {
+			final ZenPingService pingService, final DiscoveryNodeService discoveryNodeService, final NetworkService networkService,
+			final DiscoverySettings discoverySettings) {
 		super(settings,
 			clusterName,
 			threadPool,
@@ -40,12 +40,12 @@ public class GCEDiscovery extends ZenDiscovery {
 			nodeSettingsService,
 			discoveryNodeService,
 			pingService,
-			Version.CURRENT);
+			Version.CURRENT,
+			discoverySettings);
 
 		this.pingService = pingService;
 		this.transportService = transportService;
 
-		settingsFilter.addFilter(new GCESettingsFilter());
 		networkService.addCustomNameResolver(new GCENameResolver(settings));
 		discoveryNodeService.addCustomAttributeProvider(new GCENodeAttributes(settings));
 	}

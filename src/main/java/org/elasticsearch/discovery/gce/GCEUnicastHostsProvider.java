@@ -139,27 +139,44 @@ public class GCEUnicastHostsProvider implements UnicastHostsProvider {
 
 		this.logger.debug("Building dynamic list of discovery nodes");
 		try {
-			for (final Zone zone : this.client.zones().list(this.project).execute().getItems()) {
-				if (!checkZone(zone)) {
-					continue;
-				}
-				final List<Instance> iList = this.client.instances().list(this.project, zone.getName()).execute().getItems();
-				if (iList != null) {
-					for (final Instance instance : iList) {
+			final List<Zone> items = this.client.zones().list(this.project).execute().getItems();
+			if (items == null || items.isEmpty()) {
+				logger.warn("Compute client didn't report any zones. Not adding any discovery nodes.");
+			}
+			else {
+				for (final Zone zone : items) {
+					if (!checkZone(zone)) {
+						logger.debug("Skipping zone {} as it doesn't match the configured zone", zone.getName());
+						continue;
+					}
+					final List<Instance> instances = this.client.instances().list(this.project, zone.getName()).execute().getItems();
+					if (instances == null || instances.isEmpty()) {
+						logger.debug("Skipping zone {} as it doesn't seem to have any instances", zone.getName());
+						continue;
+					}
+					for (final Instance instance : instances) {
 						if (!checkState(instance) || !checkTags(instance) || !checkMetaData(instance)) {
+							logger.debug("Skipping instance {} as it doesn't match the configured filters", instance.getName());
 							continue;
 						}
 						for (final NetworkInterface networkInterface : instance.getNetworkInterfaces()) {
 							if (this.network.isEmpty() || this.network.contains(networkInterface.getNetwork())) {
 								int i = 0;
 								for (TransportAddress address : this.transportService.addressesFromString(networkInterface.getNetworkIP())) {
+									logger.trace("Adding instance {} to list of discovery nodes", instance.getName());
 									nodes.add(new DiscoveryNode("#cloud-" + instance.getId() + "-" + networkInterface.getName() + "-" + i++,
 										address,
 										Version.CURRENT));
 								}
 							}
+							else {
+								logger.debug("Skipping any instance {} because they are not going over the configured network interface {}",
+									instance.getName(),
+									this.network);
+							}
 						}
 					}
+
 				}
 			}
 		} catch (Exception e) {
@@ -178,6 +195,7 @@ public class GCEUnicastHostsProvider implements UnicastHostsProvider {
 	 */
 	private boolean checkZone(final Zone zone) {
 		if (this.zones.isEmpty()) {
+			logger.trace("Not limiting to any zones");
 			return true;
 		}
 		return this.zones.contains(zone.getName());
@@ -196,6 +214,7 @@ public class GCEUnicastHostsProvider implements UnicastHostsProvider {
 		if (instance.getStatus().equalsIgnoreCase("STAGING")) {
 			return true;
 		}
+		logger.trace("Skipping instance {} because its state is {}", instance.getName(), instance.getStatus());
 		return false;
 	}
 
@@ -217,6 +236,7 @@ public class GCEUnicastHostsProvider implements UnicastHostsProvider {
 				}
 			}
 		}
+		logger.trace("Skipping instance {} because it doesn't match any of the configured tags {}", instance.getName(), this.tags);
 		return false;
 	}
 
@@ -238,6 +258,7 @@ public class GCEUnicastHostsProvider implements UnicastHostsProvider {
 				}
 			}
 		}
+		logger.trace("Skipping instance {} because it doesn't match any of the configured metadata {}", instance.getName(), this.metadata);
 		return false;
 	}
 }

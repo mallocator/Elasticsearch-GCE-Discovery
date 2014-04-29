@@ -20,9 +20,9 @@
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
 		<java.version>1.7</java.version>
 
-		<elasticsearch.version>1.0.0.RC1</elasticsearch.version>
-		<version.google.gce>v1beta16-rev1</version.google.gce>
-		<version.google.api>1.17.0-rc</version.google.api>
+		<elasticsearch.version>1.1.1</elasticsearch.version>
+		<version.google.gce>v1-rev16</version.google.gce>
+		<version.google.api>1.18.0-rc</version.google.api>
 
 		<version.testng>6.8.1</version.testng>
 		<version.jmockit>1.5</version.jmockit>
